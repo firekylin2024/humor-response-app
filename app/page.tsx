@@ -55,7 +55,7 @@ export default function HumorResponsePage() {
     console.log("开始生成幽默回复...", { input, intensity: intensity[0] })
 
     try {
-      const response = await fetch("/api/generate-humor", {
+      const response = await fetch("/.netlify/functions/generate-humor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input, intensity: intensity[0] }),
@@ -344,7 +344,7 @@ export default function HumorResponsePage() {
               size="sm"
               onClick={async () => {
                 try {
-                  const response = await fetch("/api/generate-humor", {
+                  const response = await fetch("/.netlify/functions/generate-humor", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ input: "测试连接", intensity: 5 }),

@@ -34,6 +34,16 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <link rel="dns-prefetch" href="//openrouter.ai" />
         <link rel="preconnect" href="https://openrouter.ai" />
+        {/* Plausible Analytics Script */}
+        <script defer data-domain="luck3.kylintest.space" src="https://plausible.io/js/script.js"></script>
+        {/* Microsoft Clarity Script */}
+        <script type="text/javascript">
+          (function(c,l,a,r,i,t,y){
+              c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+              t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+              y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+          })(window, document, "clarity", "script", "ru5xati9i5");
+        </script>
       </head>
       <body className={inter.className}>
         {children}

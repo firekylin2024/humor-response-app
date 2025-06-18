@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Textarea } from "@/components/ui/textarea"
-import { Copy, Share2, RotateCcw, MessageCircle, History, Loader2, Zap } from "lucide-react"
+import { Copy, Share2, RotateCcw, MessageCircle, History, Loader2, Zap, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface HumorResponse {
@@ -26,19 +27,103 @@ function HumorResponsePage() {
   const [showHistory, setShowHistory] = useState(false)
   const { toast } = useToast()
 
-  // 加载历史记录
+  // 从URL参数加载数据
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const inputParam = urlParams.get('input')
+    const intensityParam = urlParams.get('intensity')
+    const responsesParam = urlParams.get('responses')
+    
+    if (inputParam) setInput(inputParam)
+    if (intensityParam) setIntensity([parseInt(intensityParam)])
+    if (responsesParam) {
+      try {
+        const parsedResponses = JSON.parse(responsesParam)
+        if (Array.isArray(parsedResponses)) {
+          setResponses(parsedResponses)
+        }
+      } catch (error) {
+        console.error('解析URL参数失败:', error)
+      }
+    }
+    
+    // 清理URL参数
+    if (inputParam || intensityParam || responsesParam) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  // 加载本地历史记录（作为备份）
   useEffect(() => {
     const savedHistory = localStorage.getItem("humor-history")
     if (savedHistory) {
       setHistory(JSON.parse(savedHistory))
     }
+    
+    // 尝试从云端获取历史记录
+    fetchCloudHistory()
   }, [])
 
-  // 保存到历史记录
-  const saveToHistory = (newResponse: HumorResponse) => {
+  // 从云端获取历史记录
+  const fetchCloudHistory = async () => {
+    try {
+      const response = await fetch('/api/history')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.history && data.history.length > 0) {
+          // 转换云端数据格式为本地格式
+          const cloudHistory = data.history.slice(0, 10).map((item: any) => ({
+            id: item.id,
+            input: item.input,
+            intensity: item.intensity,
+            responses: item.responses,
+            timestamp: new Date(item.created_at).getTime()
+          }))
+          
+          // 合并本地和云端历史记录，去重
+          const localHistory = JSON.parse(localStorage.getItem("humor-history") || '[]')
+          const mergedHistory = [...cloudHistory, ...localHistory]
+            .filter((item, index, arr) => 
+              arr.findIndex(h => h.input === item.input && h.intensity === item.intensity) === index
+            )
+            .sort((a, b) => b.timestamp - a.timestamp)
+            .slice(0, 10)
+          
+          setHistory(mergedHistory)
+          localStorage.setItem("humor-history", JSON.stringify(mergedHistory))
+        }
+      }
+    } catch (error) {
+      console.log('获取云端历史记录失败，使用本地记录:', error)
+    }
+  }
+
+  // 保存到云端和本地历史记录
+  const saveToHistory = async (newResponse: HumorResponse) => {
+    // 保存到本地（备份）
     const updatedHistory = [newResponse, ...history].slice(0, 10)
     setHistory(updatedHistory)
     localStorage.setItem("humor-history", JSON.stringify(updatedHistory))
+    
+    // 尝试保存到云端
+    try {
+      const response = await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          input: newResponse.input,
+          intensity: newResponse.intensity,
+          responses: newResponse.responses
+        })
+      })
+      
+      if (response.ok) {
+        // 云端保存成功，刷新历史记录以获取最新数据
+        setTimeout(() => fetchCloudHistory(), 500)
+      }
+    } catch (error) {
+      console.log('云端保存失败，已保存到本地:', error)
+    }
   }
 
   // 生成幽默回复
@@ -198,12 +283,28 @@ function HumorResponsePage() {
         {showHistory && (
           <Card>
             <CardContent className="p-4">
-              <h3 className="font-semibold text-gray-800 mb-3">历史记录</h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-gray-800">最近记录</h3>
+                <Link href="/history">
+                  <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                    <ExternalLink className="w-4 h-4 mr-1" />
+                    查看全部
+                  </Button>
+                </Link>
+              </div>
               {history.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">暂无历史记录</p>
+                <div className="text-center py-6">
+                  <p className="text-gray-500 mb-3">还没有历史记录</p>
+                  <Link href="/history">
+                    <Button variant="outline" size="sm" className="text-green-600">
+                      <History className="w-4 h-4 mr-2" />
+                      查看云端记录
+                    </Button>
+                  </Link>
+                </div>
               ) : (
                 <div className="space-y-2">
-                  {history.map((item) => (
+                  {history.slice(0, 5).map((item) => (
                     <div
                       key={item.id}
                       className="p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
@@ -215,6 +316,15 @@ function HumorResponsePage() {
                       </p>
                     </div>
                   ))}
+                  {history.length > 5 && (
+                    <div className="pt-2 border-t">
+                      <Link href="/history">
+                        <Button variant="ghost" size="sm" className="w-full text-green-600 hover:text-green-700">
+                          查看更多历史记录 ({history.length - 5}+)
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

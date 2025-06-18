@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
@@ -16,7 +17,7 @@ interface HumorResponse {
   timestamp: number
 }
 
-export default function HumorResponsePage() {
+function HumorResponsePage() {
   const [input, setInput] = useState("")
   const [intensity, setIntensity] = useState([5])
   const [responses, setResponses] = useState<string[]>([])
@@ -164,7 +165,7 @@ export default function HumorResponsePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       {/* 头部 */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-2xl mx-auto px-4 py-4">
@@ -370,6 +371,14 @@ export default function HumorResponsePage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </>
+  )
+}
+
+export default function Page() {
+  return (
+    <AuthWrapper>
+      <HumorResponsePage />
+    </AuthWrapper>
   )
 }

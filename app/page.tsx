@@ -141,10 +141,8 @@ function HumorResponsePage() {
     console.log("开始生成幽默回复...", { input, intensity: intensity[0] })
 
     try {
-      // 根据环境选择API端点
-      const apiEndpoint = process.env.NODE_ENV === 'development' 
-        ? '/api/generate-humor'
-        : '/.netlify/functions/generate-humor'
+      // 根据环境选择API端点 - Vercel使用本地API路由
+      const apiEndpoint = '/api/generate-humor'
       
       const response = await fetch(apiEndpoint, {
         method: "POST",
@@ -460,9 +458,7 @@ function HumorResponsePage() {
               size="sm"
                           onClick={async () => {
               try {
-                const apiEndpoint = process.env.NODE_ENV === 'development' 
-                  ? '/api/generate-humor'
-                  : '/.netlify/functions/generate-humor'
+                const apiEndpoint = '/api/generate-humor'
                 
                 const response = await fetch(apiEndpoint, {
                   method: "POST",

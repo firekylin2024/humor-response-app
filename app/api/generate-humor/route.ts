@@ -1,26 +1,30 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("API调用开始...")
+    console.log("本地API路由调用开始...")
 
     const { input, intensity } = await request.json()
     console.log("接收到的参数:", { input, intensity })
 
     // 检查环境变量
-    if (!process.env.OPENROUTER_API_KEY) {
+    const apiKey = process.env.OPENROUTER_API_KEY
+    console.log("环境变量检查:", apiKey ? "存在" : "不存在")
+
+    if (!apiKey) {
       console.error("OPENROUTER_API_KEY 环境变量未设置")
-      return NextResponse.json({ error: "服务配置错误，请联系管理员" }, { status: 500 })
+      return NextResponse.json(
+        { error: "服务配置错误：API密钥未设置。请联系管理员。" },
+        { status: 500 }
+      )
     }
 
     // 内容过滤
     const inappropriateKeywords = ["暴力", "色情", "政治", "歧视", "仇恨"]
     if (inappropriateKeywords.some((keyword) => input.includes(keyword))) {
       return NextResponse.json(
-        {
-          error: "请输入更加友善的内容，让我们保持幽默而不失礼貌 😊",
-        },
-        { status: 400 },
+        { error: "请输入更加友善的内容，让我们保持幽默而不失礼貌 😊" },
+        { status: 400 }
       )
     }
 
@@ -57,9 +61,9 @@ export async function POST(request: NextRequest) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://humor-response.vercel.app",
+        "HTTP-Referer": "https://humor-response-generator.netlify.app",
         "X-Title": "Humor Response Generator",
       },
       body: JSON.stringify({
@@ -92,11 +96,6 @@ export async function POST(request: NextRequest) {
 【输出格式】：
 直接返回3条回复，用换行符分隔，不要序号或其他格式。
 
-【参考风格】：
-- 温和级别：用优雅的方式让对方自己发现问题
-- 适中级别：用机智的逻辑和比喻进行反击  
-- 犀利级别：直接有力但保持幽默感的回击
-
 现在请发挥你的才华，给出最犀利的回复！`,
           },
           {
@@ -106,9 +105,9 @@ export async function POST(request: NextRequest) {
 请根据这句话的具体内容和语境，生成3条${strategy.style}的回复。要让回复既幽默又犀利，让对方印象深刻！`,
           },
         ],
-        temperature: 0.9, // 提高创意度
-        max_tokens: 400, // 增加token数量
-        top_p: 0.95, // 增加多样性
+        temperature: 0.9,
+        max_tokens: 400,
+        top_p: 0.95,
       }),
     })
 
@@ -117,7 +116,11 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error("OpenRouter API错误:", errorText)
-      return NextResponse.json({ error: "AI服务暂时不可用，请稍后重试" }, { status: 500 })
+
+      return NextResponse.json(
+        { error: `AI服务暂时不可用 (${response.status})，请稍后重试` },
+        { status: 500 }
+      )
     }
 
     const data = await response.json()
@@ -126,7 +129,10 @@ export async function POST(request: NextRequest) {
     const content = data.choices?.[0]?.message?.content
     if (!content) {
       console.error("API返回内容为空")
-      return NextResponse.json({ error: "生成回复失败，请重试" }, { status: 500 })
+      return NextResponse.json(
+        { error: "生成回复失败，请重试" },
+        { status: 500 }
+      )
     }
 
     // 更好的回复解析和过滤
@@ -134,27 +140,38 @@ export async function POST(request: NextRequest) {
       .split("\n")
       .map((line: string) => line.trim())
       .filter((line: string) => {
-        // 过滤掉空行、序号、标点符号等
         return line && line.length > 5 && !line.match(/^[0-9.\-*\s]*$/) && !line.match(/^[回复|答案|回应][：:]/)
       })
       .slice(0, 3)
 
     // 如果回复数量不足，尝试重新解析
     if (responses.length < 3) {
-      const allLines = content.split(/[。！？\n]/).filter((line) => line.trim().length > 5)
+      const allLines = content.split(/[。！？\n]/).filter((line: string) => line.trim().length > 5)
       responses.push(...allLines.slice(0, 3 - responses.length))
     }
 
     console.log("生成的回复:", responses)
 
     return NextResponse.json({ responses: responses.slice(0, 3) })
+
   } catch (error) {
-    console.error("API Error:", error)
+    console.error("API路由错误:", error)
     return NextResponse.json(
       {
-        error: "生成回复时出现问题，请稍后重试 🤔",
+        error: `生成回复时出现问题：${error instanceof Error ? error.message : "未知错误"}，请稍后重试 🤔`,
       },
-      { status: 500 },
+      { status: 500 }
     )
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    },
+  })
 }

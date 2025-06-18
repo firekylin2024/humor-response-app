@@ -56,7 +56,12 @@ function HumorResponsePage() {
     console.log("开始生成幽默回复...", { input, intensity: intensity[0] })
 
     try {
-      const response = await fetch("/.netlify/functions/generate-humor", {
+      // 根据环境选择API端点
+      const apiEndpoint = process.env.NODE_ENV === 'development' 
+        ? '/api/generate-humor'
+        : '/.netlify/functions/generate-humor'
+      
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input, intensity: intensity[0] }),
@@ -343,13 +348,17 @@ function HumorResponsePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={async () => {
-                try {
-                  const response = await fetch("/.netlify/functions/generate-humor", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ input: "测试连接", intensity: 5 }),
-                  })
+                          onClick={async () => {
+              try {
+                const apiEndpoint = process.env.NODE_ENV === 'development' 
+                  ? '/api/generate-humor'
+                  : '/.netlify/functions/generate-humor'
+                
+                const response = await fetch(apiEndpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ input: "测试连接", intensity: 5 }),
+                })
                   const data = await response.json()
                   toast({
                     title: response.ok ? "API连接正常 ✅" : "API连接失败 ❌",

@@ -18,16 +18,33 @@ export function AuthWrapper({ children }: AuthWrapperProps) {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      setLoading(false)
+      try {
+        // 首先尝试获取当前会话
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user) {
+          setUser(session.user)
+          setLoading(false)
+          return
+        }
+
+        // 如果没有会话，再尝试获取用户
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+      } catch (error) {
+        console.error('获取用户信息失败:', error)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('认证状态变化:', event, session?.user?.email)
         setUser(session?.user ?? null)
+        setLoading(false)
       }
     )
 

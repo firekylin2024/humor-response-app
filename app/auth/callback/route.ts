@@ -6,29 +6,27 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
   
-  const response = NextResponse.next()
+  // 创建重定向响应
+  const redirectUrl = `${origin}${next}`
+  const response = NextResponse.redirect(redirectUrl)
   const supabase = createClient(request, response)
 
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    console.log('处理OAuth回调，code:', code.substring(0, 10) + '...')
     
-    if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // 原域名
-      const isLocalEnv = process.env.NODE_ENV === 'development'
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    if (!error && data.session) {
+      console.log('会话交换成功，用户:', data.session.user.email)
       
-      if (isLocalEnv) {
-        // 本地开发环境
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        // 生产环境，使用原域名
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        // 备用方案
-        return NextResponse.redirect(`${origin}${next}`)
-      }
+      // 会话交换成功，返回已经配置好 cookies 的响应
+      return response
+    } else {
+      console.error('会话交换失败:', error)
     }
   }
 
   // 认证失败，重定向到错误页面
+  console.log('认证失败，重定向到错误页面')
   return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 } 

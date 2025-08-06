@@ -1,0 +1,13 @@
+name: Deploy humor-response-app to Vercel
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  trigger-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel Deploy Hook
+        run: curl -X POST ${{ secrets.HUMOR_RESPONSE_HOOK }}
